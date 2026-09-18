@@ -1,0 +1,12 @@
+{
+  "name": "vibecheck-for-x",
+  "version": "0.2.0",
+  "private": true,
+  "scripts": {
+    "check": "node --check background.js && node --check composer.js && node --check content.js && node --check options.js && node --check rubrics.js && node -e \"JSON.parse(require('node:fs').readFileSync('manifest.json', 'utf8'))\"",
+    "test": "npm run check && node --test tests/*.test.js"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

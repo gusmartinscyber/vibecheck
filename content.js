@@ -5,9 +5,8 @@
   window.__vibecheckLoaded = true;
 
   const PANEL_ID = "vibecheck-panel";
-  // Note: X also has data-testid="tweetTextarea_0_label" (the placeholder) and
-  // "...RichTextInputContainer" (a wrapper); only accept real role=textbox nodes.
-  const TEXTBOX_SEL = '[data-testid^="tweetTextarea_"][role="textbox"], [data-testid^="tweetTextarea_"]:not([data-testid$="_label"]) [role="textbox"]';
+  const { TEXTBOX_SEL, findTextboxes, getDraftParts, pickTextbox, getComposerScope } =
+    globalThis.VIBECHECK_COMPOSER;
   const TOOLBAR_SEL = '[data-testid="toolBar"]';
   const POST_BTN_SEL = '[data-testid="tweetButton"], [data-testid="tweetButtonInline"]';
   const REPLY_CTX_SEL = '[data-testid="tweetText"]';
@@ -25,6 +24,7 @@
   let debounceTimer = null;
   let lastAnalyzedKey = "";
   let inFlight = false;
+  let pendingKey = null;
   let currentHost = null; // the composer root we attached to
 
   chrome.storage.sync.get(["autoAnalyze", "debounceMs", "describeMedia"]).then((s) => {
@@ -41,18 +41,6 @@
 
   // ---------- composer discovery ----------
 
-  function findTextboxes() {
-    const seen = new Set();
-    const out = [];
-    for (const el of document.querySelectorAll(TEXTBOX_SEL)) {
-      const tb = el.getAttribute("role") === "textbox" ? el : el.querySelector('[role="textbox"]');
-      if (!tb || seen.has(tb)) continue;
-      seen.add(tb);
-      out.push(tb);
-    }
-    return out;
-  }
-
   // The composer "host" is the element we hang the panel off: the toolbar row
   // (which holds media/emoji buttons + Post) if we can find it, else the textbox.
   function findComposerHost(textbox) {
@@ -64,10 +52,11 @@
     return after || textbox;
   }
 
-  function getDraftParts() {
-    return findTextboxes()
-      .map((tb) => (tb.innerText || tb.textContent || "").replace(/ /g, " ").trim())
-      .filter(Boolean);
+  function isCurrentComposer(scope) {
+    const textboxes = findTextboxes();
+    const selected = pickTextbox(textboxes, document.activeElement, currentHost, findComposerHost);
+    if (!selected) return false;
+    return getComposerScope(selected, findComposerHost(selected)) === scope;
   }
 
   function tweetInfo(container) {
@@ -107,7 +96,7 @@
 
   function collectMedia(textbox) {
     const dialog = textbox.closest('[role="dialog"]');
-    const scope = dialog || document;
+    const scope = getComposerScope(textbox, findComposerHost(textbox));
     const items = [];
     const seen = new Set();
     const push = (el, kind, src, role) => {
@@ -203,7 +192,7 @@
   }
 
   async function buildState(textbox) {
-    const parts = getDraftParts();
+    const parts = getDraftParts(textbox);
     const state = {};
     if (parts.length > 1) {
       state.draft = parts.map((text, i) => ({ part: i + 1, text }));
@@ -454,14 +443,19 @@
   async function runAnalysis(force = false) {
     const tbs = findTextboxes();
     if (!tbs.length) return;
-    const textbox = tbs.find((t) => t.contains(document.activeElement)) || tbs[0];
+    const textbox = pickTextbox(tbs, document.activeElement, currentHost, findComposerHost);
     const host = findComposerHost(textbox);
+    const composerScope = getComposerScope(textbox, host);
     ensurePanel(host);
 
     if (inFlight) { pendingKey = "pending"; return; }
     inFlight = true;
     try {
       const state = await buildState(textbox);
+      if (!isCurrentComposer(composerScope)) {
+        pendingKey = "pending";
+        return;
+      }
       const draftText = typeof state.draft === "string" ? state.draft : state.draft.map((p) => p.text).join("\n\n");
       const hasMedia = Array.isArray(state.media) && state.media.length > 0;
       if (draftText.length < MIN_CHARS && !hasMedia && !state.quoting) {
@@ -475,6 +469,10 @@
 
       setStatus("thinking…", "vc-busy");
       const res = await chrome.runtime.sendMessage({ type: "vibecheck:analyze", state });
+      if (!isCurrentComposer(composerScope)) {
+        pendingKey = "pending";
+        return;
+      }
       if (!res?.ok) {
         if (res?.error === "NO_API_KEY") {
           renderEmpty("Add your TypeSafe API key in settings (⚙) to enable vibe checks.");
@@ -496,7 +494,6 @@
       if (pendingKey) { pendingKey = null; schedule(); }
     }
   }
-  let pendingKey = null;
 
   function schedule() {
     if (!settings.autoAnalyze) return;
@@ -508,6 +505,17 @@
   document.addEventListener("input", (e) => { if (e.target?.closest?.(TEXTBOX_SEL)) schedule(); }, true);
   document.addEventListener("keyup", (e) => { if (e.target?.closest?.(TEXTBOX_SEL)) schedule(); }, true);
   document.addEventListener("paste", (e) => { if (e.target?.closest?.(TEXTBOX_SEL)) schedule(); }, true);
+  document.addEventListener("focusin", (e) => {
+    const textbox = e.target?.closest?.(TEXTBOX_SEL);
+    if (!textbox) return;
+    const host = findComposerHost(textbox);
+    if (currentHost === host) return;
+    ensurePanel(host);
+    const sig = mediaSignature(textbox);
+    lastMediaSig = sig;
+    if (sig || getDraftParts(textbox).join("").length >= MIN_CHARS || getContextTweets(textbox).quoting) schedule();
+    else renderEmpty("Start typing (or attach media) and I'll vibe check it.");
+  }, true);
 
   // Keep the panel attached across X's constant re-renders / route changes.
   let raf = 0;
@@ -518,16 +526,17 @@
       const tbs = findTextboxes();
       const panel = document.getElementById(PANEL_ID);
       if (!tbs.length) { if (panel) { panel.remove(); currentHost = null; lastAnalyzedKey = ""; } return; }
-      const host = findComposerHost(tbs[0]);
+      const textbox = pickTextbox(tbs, document.activeElement, currentHost, findComposerHost);
+      const host = findComposerHost(textbox);
       if (!panel || !panel.isConnected || currentHost !== host) {
         ensurePanel(host);
-        if (getDraftParts().join("").length >= MIN_CHARS || getContextTweets(tbs[0]).quoting) schedule();
+        if (getDraftParts(textbox).join("").length >= MIN_CHARS || getContextTweets(textbox).quoting) schedule();
         else renderEmpty("Start typing (or attach media) and I'll vibe check it.");
       }
-      const sig = mediaSignature(tbs[0]);
+      const sig = mediaSignature(textbox);
       if (sig !== lastMediaSig) {
         lastMediaSig = sig;
-        if (sig || getDraftParts().join("").length >= MIN_CHARS) schedule();
+        if (sig || getDraftParts(textbox).join("").length >= MIN_CHARS) schedule();
       }
     });
   });

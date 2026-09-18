@@ -56,6 +56,14 @@ Each Jev analysis is roughly 1.5k–2.5k input tokens (rubrics dominate), i.e. a
 
 ## Caveats
 
-- X changes its DOM without notice. If the panel disappears, the selectors at the top of `content.js` are the place to look.
+- X changes its DOM without notice. If the panel disappears, the selectors in `composer.js` and at the top of `content.js` are the place to look.
 - Both keys live in `chrome.storage.sync` and never touch the x.com page context, but these are still client-side keys; use keys you can rotate.
 - Video/GIF support describes a single frame only, so motion-dependent jokes will be under-read.
+
+## Development
+
+Run the zero-dependency syntax and composer-scoping tests with:
+
+```sh
+npm test
+```

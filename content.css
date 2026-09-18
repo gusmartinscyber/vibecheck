@@ -1,0 +1,61 @@
+#vibecheck-panel.vc {
+  --vc-bg: #16181c; --vc-fg: #e7e9ea; --vc-muted: #71767b; --vc-border: #2f3336; --vc-track: #2f3336; --vc-accent: #1d9bf0;
+  --vc-good: #00ba7c; --vc-mid: #ffd400; --vc-bad: #f4212e; --vc-neutral: #7856ff;
+  box-sizing: border-box; margin: 8px 0 4px; padding: 10px 12px; border: 1px solid var(--vc-border); border-radius: 16px;
+  background: var(--vc-bg); color: var(--vc-fg);
+  font: 13px/1.35 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+#vibecheck-panel.vc.vc-light { --vc-bg: #f7f9f9; --vc-fg: #0f1419; --vc-muted: #536471; --vc-border: #eff3f4; --vc-track: #e6ecf0; }
+#vibecheck-panel.vc.vc-dim { --vc-bg: #1e2732; --vc-fg: #f7f9f9; --vc-muted: #8b98a5; --vc-border: #38444d; --vc-track: #38444d; }
+#vibecheck-panel.vc * { box-sizing: border-box; }
+
+.vc .vc-header { display: flex; align-items: center; gap: 8px; }
+.vc .vc-title { font-weight: 700; font-size: 14px; }
+.vc .vc-sub { color: var(--vc-muted); font-size: 12px; }
+.vc .vc-status { margin-left: auto; color: var(--vc-muted); font-size: 12px; }
+.vc .vc-status.vc-busy { color: var(--vc-accent); animation: vc-pulse 1s infinite; }
+.vc .vc-status.vc-err { color: var(--vc-bad); }
+@keyframes vc-pulse { 0%,100% { opacity: 1 } 50% { opacity: .4 } }
+.vc .vc-btn { border: 0; border-radius: 999px; padding: 4px 12px; background: var(--vc-accent); color: #fff; font-weight: 700; font-size: 12px; cursor: pointer; }
+.vc .vc-btn:hover { filter: brightness(1.1); }
+.vc .vc-icon { border: 0; background: transparent; color: var(--vc-muted); cursor: pointer; font-size: 14px; padding: 2px 4px; border-radius: 6px; }
+.vc .vc-icon:hover { color: var(--vc-fg); background: var(--vc-track); }
+.vc.vc-collapsed .vc-body { display: none; }
+.vc.vc-collapsed [data-role="toggle"] { transform: rotate(-90deg); }
+
+.vc .vc-body { margin-top: 10px; }
+.vc .vc-empty { color: var(--vc-muted); padding: 6px 0; }
+
+.vc .vc-verdict { display: flex; align-items: center; gap: 12px; padding: 8px 10px; border-radius: 12px; margin-bottom: 10px; background: var(--vc-track); }
+.vc .vc-verdict-score { font-size: 28px; font-weight: 800; min-width: 48px; text-align: center; }
+.vc .vc-verdict-label { font-weight: 700; font-size: 14px; }
+.vc .vc-verdict-sub { color: var(--vc-muted); font-size: 12px; }
+.vc .vc-v-good .vc-verdict-score { color: var(--vc-good); }
+.vc .vc-v-mid .vc-verdict-score { color: var(--vc-mid); }
+.vc .vc-v-bad .vc-verdict-score { color: var(--vc-bad); }
+
+.vc .vc-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px 14px; }
+.vc .vc-row { min-width: 0; }
+.vc .vc-row-top { display: flex; justify-content: space-between; align-items: baseline; gap: 6px; }
+.vc .vc-label { font-weight: 600; }
+.vc .vc-val { color: var(--vc-muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+.vc .vc-track { height: 6px; border-radius: 999px; background: var(--vc-track); margin: 4px 0 3px; overflow: hidden; }
+.vc .vc-fill { height: 100%; border-radius: 999px; transition: width .35s ease; }
+.vc .vc-fill.vc-good { background: var(--vc-good); }
+.vc .vc-fill.vc-mid { background: var(--vc-mid); }
+.vc .vc-fill.vc-bad, .vc .vc-fill.vc-low { background: var(--vc-bad); }
+.vc .vc-fill.vc-low { opacity: .55; }
+.vc .vc-fill.vc-neutral { background: var(--vc-neutral); }
+.vc .vc-level { color: var(--vc-muted); font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.vc .vc-reactions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.vc .vc-chip { border: 1px solid var(--vc-border); border-radius: 999px; padding: 2px 8px; font-size: 11px; color: var(--vc-muted); }
+.vc .vc-chip.vc-chip-top { border-color: var(--vc-accent); color: var(--vc-fg); font-weight: 600; }
+.vc .vc-foot { margin-top: 8px; color: var(--vc-muted); font-size: 10px; text-align: right; }
+
+.vc .vc-media { margin-top: 10px; border-top: 1px solid var(--vc-border); padding-top: 8px; }
+.vc .vc-media summary { cursor: pointer; color: var(--vc-muted); font-size: 12px; }
+.vc .vc-media summary:hover { color: var(--vc-fg); }
+.vc .vc-media-item { margin-top: 8px; }
+.vc .vc-media-kind { font-size: 11px; font-weight: 600; color: var(--vc-muted); text-transform: uppercase; letter-spacing: .02em; }
+.vc .vc-media-desc { font-size: 12px; white-space: pre-wrap; }
